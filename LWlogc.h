@@ -90,6 +90,13 @@ extern "C"{
 #define TIME_NOW_BUF_SIZE 1024
 #define WEEK "星期"
 
+#define NUM_OF_ELEMENTS	1
+#define CONVERT_BYTES_TO_MEGA	(1024 * 1024)
+
+typedef enum {
+	false,
+	true,
+}bool;
 
 
 /**
@@ -109,7 +116,7 @@ struct LwlogcInfoPerFile{
 	struct LwlogcInfoPerFile *pre, *next;
 	char *fileName;
 	int fileSize;
-	int maxIndex; //当前目录下log文件的最大索引号.
+	int fileIndex; //当前目录下log文件的最大索引号. eg: test.log.10, 则fineIndex = 10
 };
 
 
@@ -121,11 +128,11 @@ typedef struct
 	char *filePath;			//文件路径(用户必填)
 	char *convPattern;		//匹配模式(暂时不使用)
 	int maxBackupIndex;		//log文件数量, 默认1个
-	long long maxFileSize;	//每个log文件的大小, 默认100MB
    	unsigned short append;	//追加(暂时不使用)
+	long long maxFileSize;	//每个log文件的大小(MB)
 	LWLogcLevel logLevel;   //日志等级, 默认LW_INFO
 	pthread_mutex_t mutex;
-	//LwlogcInfoPerFile *fp;  //目录下列表文件信息.
+	struct LwlogcInfoPerFile *fp;  //目录下列表文件信息.
 }LWLogcConf;
 
 
@@ -175,13 +182,19 @@ extern FILE *LwlogcGetNowStream();
 */
 extern const char *LwlogcFormatLogMessage(const char * format, ...);
 
-
 extern int LwlogcInit(const char *filePath);
-
 
 void* LwlogcReadConf(void *pFd);
 
 extern int LwlogcCouNum2SizeOfFiles();
+
+extern int LwlogcGetLogsNum(const struct LwlogcInfoPerFile *pHead);
+
+extern int LwlogcDeleteOldLogFile();
+
+extern int LWlogcNewestLogFile(char *pLogBuf, const size_t *bufSize);
+
+extern int LwlogcCreateNewLogs(const int *pIndex);
 
 #ifdef __cplusplus
 }
