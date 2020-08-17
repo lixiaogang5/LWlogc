@@ -30,7 +30,8 @@ static FILE *gStream = 0;
 static const char *lwlogcLeverStr[] = {"LW_ERROR", "LW_WARN", "LW_INFO", "LW_DEBUG"};
 LWLogcConf logConfigure;
 bool bInit = false;
-static long long perLogSize = 0;
+static struct LwlogcInfoPerFile logFileinUse;
+
 pthread_attr_t attr; //可采用静态初始化方式.
 
 void LwlogcSetStream(const FILE *stream)
@@ -121,31 +122,13 @@ void LwlogcMessage(LWLogcLevel curLevel, int line, const char *funcName, const c
 	fflush(LWLOG_STREAM);
 	if(message) free((void*)message), message = NULL;
 
-	perLogSize += len; // --- 待完善, 需要加上该文件中已有的字节数.
-	if(perLogSize/CONVERT_BYTES_TO_MEGA >= logConfigure.maxFileSize) {
-		perLogSize = 0;
-
-		//关闭旧文件句柄.
-		FILE *fp = LwlogcGetNowStream();
-		fclose(fp);
-
-		//获取最新的文件句柄
-		char arr[128] = {0};
-		size_t len = sizeof(arr);
-		if(true != LWlogcNewestLogFile(arr, &len)){
-			fputs("LWlogcNewestLogFile failed.", stderr);
-			LwlogcSetStream(stdout);
-		}
-		fp = fopen(arr, "a+");
-		if(!fp) {
-			perror("fopen");
-			LwlogcSetStream(stdout);
-			return;
-		}
-
-		LwlogcSetStream(fp);
-		if(LwlogcGetLogsNum(logConfigure.fp) >= logConfigure.maxBackupIndex) LwlogcDeleteOldLogFile();
+	pthread_mutex_lock(&logConfigure.mutex);
+	logFileinUse.fileSize += len;
+	if(false == LwlogcCheckFileExceedsLimit(&logFileinUse.fileSize)) {
+		fputs("LwlogcCheckFileExceedsLimit failed. but the process still continues.", stderr);
+		return;
 	}
+	pthread_mutex_unlock(&logConfigure.mutex);
 	
 	return;
 }
@@ -213,7 +196,7 @@ int LwlogcInit(const char *configFile)
 		return false;
 	}
 
-	char buf[128] = {0};
+	char buf[TIME_BUF_LEN] = {0};
 	size_t buf_len = sizeof(buf);
 	if(false == LWlogcNewestLogFile(buf, &buf_len)) {
 		fputs("LWlogcNewestLogFile failed.", stderr);
@@ -226,6 +209,7 @@ int LwlogcInit(const char *configFile)
 		perror("fopen");
 		return false;
 	}
+	
 	LwlogcSetStream(fpN);
 	return true;
 }
@@ -432,15 +416,10 @@ int LwlogcCouNum2SizeOfFiles(const char *logFilesPath)
 
 			char *t = NULL;
 			t = pFile->fileName;
-			while(0 == isdigit(*++t));
+			while(0 == isdigit(*++t) && *t != '\0');
 			*t == '\0' ? pFile->fileIndex = 0 : (pFile->fileIndex = atoi(t));
-
-			pHead = logConfigure.fp;
-			while(pHead->next) pHead = pHead->next;
-			pFile->next = pHead->next;
-			pFile->pre = pHead;
-			if(pHead->next) pHead->next->pre = pFile;
-			pHead->next = pFile;
+	
+			LwlogcAddNodeToLinked(pHead, pFile);
 		}
 	}
 
@@ -467,6 +446,7 @@ int LwlogcGetLogsNum(const struct LwlogcInfoPerFile *pHead)
 
 int LwlogcDeleteOldLogFile()
 {
+	#if 0
 	int minIndex = 0;
 	struct LwlogcInfoPerFile *pHead = logConfigure.fp;
 	struct LwlogcInfoPerFile *pT = NULL;
@@ -499,7 +479,8 @@ int LwlogcDeleteOldLogFile()
 
 		pHead = pHead->pre;
 	}
-
+	#else 
+	#endif 
 	return true;
 }
 
@@ -507,6 +488,9 @@ int LwlogcDeleteOldLogFile()
 int LWlogcNewestLogFile(char *pLogBuf, const size_t *bufSize)
 {
 	int maxIndex = 0;
+	struct LwlogcInfoPerFile *pHead = NULL;
+	struct LwlogcInfoPerFile *pFile = NULL;
+	
 	if(0 == LwlogcGetLogsNum(logConfigure.fp)) {
 		//表示当前目录下还未有log文件.
 		const char *tail = logConfigure.filePath + strlen(logConfigure.filePath);
@@ -520,76 +504,156 @@ int LWlogcNewestLogFile(char *pLogBuf, const size_t *bufSize)
 		pLogBuf[strlen(pLogBuf)] = '\0';
 
 		//将该节点加入fp链表中进行管理.
-		struct LwlogcInfoPerFile *pHead = NULL;
-		struct LwlogcInfoPerFile *pFile  = (struct LwlogcInfoPerFile *)calloc(NUM_OF_ELEMENTS, sizeof(struct LwlogcInfoPerFile));
+		int logIndex = 0;
+		pFile = LwlogcCreateNewLogs(pLogBuf, &logIndex);
 		if(!pFile) {
-			perror("calloc");
+			fputs("LwlogcCreateNewLogs", stderr);
 			return false;
 		}
-
-		pFile->fileIndex = 0;
-		pFile->fileSize = 0;
-		pFile->pre = pFile->next = NULL;
-		pFile->fileName = (char *)calloc(NUM_OF_ELEMENTS, strlen(pLogBuf) + NUM_OF_ELEMENTS);
-		assert(pFile->fileName);
-		memcpy(pFile->fileName, pLogBuf, strlen(pLogBuf));
 		
-		pHead = logConfigure.fp;
-		while(pHead->next) pHead = pHead->next;
-		pFile->next = pHead->next;
-		pFile->pre = pHead;
-		if(pHead->next) pHead->next->pre = pFile;
-		pHead->next = pFile;
+		LwlogcAddNodeToLinked(pHead, pFile);
+	
 		return true;
 	}
 	
-	struct LwlogcInfoPerFile *pHead = logConfigure.fp;
+	struct LwlogcInfoPerFile *pTemp = logConfigure.fp;
 	struct LwlogcInfoPerFile *pT = NULL;
-	while(pHead->next)  pHead = pHead->next, (pHead->fileIndex > maxIndex) ? maxIndex = pHead->fileIndex : maxIndex;
-	while(pHead->pre) {
-		if(maxIndex == pHead->fileIndex) {
+	while(pTemp->next)  pTemp = pTemp->next, (pTemp->fileIndex > maxIndex) ? maxIndex = pTemp->fileIndex : maxIndex;
+	while(pTemp->pre) {
+		if(maxIndex == pTemp->fileIndex) {
+			
 			//若该log文件已经超过用户指定预期的大小, 则新创建log文件.
-			if(pHead->fileSize/CONVERT_BYTES_TO_MEGA >= logConfigure.maxFileSize) {
+			if(pTemp->fileSize/CONVERT_BYTES_TO_MEGA >= logConfigure.maxFileSize) {
 
-				char buf[128] = {0};
-				char arr[56] = {0};
-				const char *t = pHead->fileName;
+				char buf[TIME_BUF_LEN] = {0};
+				char arr[TIME_BUF_LEN/2] = {0};
+				const char *t = pTemp->fileName;
 				while('.' != *(++t));
-				strncpy(arr, pHead->fileName, strlen(pHead->fileName) - strlen(t));
+				strncpy(arr, pTemp->fileName, strlen(pTemp->fileName) - strlen(t));
 				snprintf(buf, sizeof(buf), "%s.log%d", arr, ++maxIndex);
 				memcpy(pLogBuf, buf, *bufSize);
+
+				//new node and add to linked list.
+				int logIndex = pTemp->fileIndex;
+				logIndex ++;
+				pFile = LwlogcCreateNewLogs(pLogBuf, &logIndex);
+				if(!pFile) {
+					fputs("LwlogcCreateNewLogs", stderr);
+					return false;
+				}
+
+				LwlogcAddNodeToLinked(pHead, pFile);
+				
 				//同时判断log文件数量是否超过用户指定数量.
-				if(LwlogcGetLogsNum(logConfigure.fp) > logConfigure.maxBackupIndex){
+				if(LwlogcGetLogsNum(logConfigure.fp) > logConfigure.maxBackupIndex) {
 					//删除最旧的log文件.
 					if(false == LwlogcDeleteOldLogFile()) {
 						fputs("LwlogcDeleteOldLog err.", stderr);
 						return false;
 					}
 				}
+
+				return true;
 			}
 
-			strncpy(pLogBuf, pHead->fileName, *bufSize);
+			strncpy(pLogBuf, pTemp->fileName, *bufSize);
+			//Find the corresponding node information according to the node name
 			return true;
 		}
 
-		pHead = pHead->pre;
+		pTemp = pTemp->pre;
 	}
 	
-	if(!pHead && 0 == strlen(pLogBuf)) return false;
+	if(!pTemp && 0 == strlen(pLogBuf)) return false;
 	return true;
 }
 
-
-int LwlogcCreateNewLogs(const int *pIndex)
+//0-false 1-true
+const struct LwlogcInfoPerFile *LwlogcCreateNewLogs(const char *pFileName, const int *pFileIndex)
 {
-	if(!pIndex) {
-		fputs("LwlogcCreateNewLogs parameter is empty.", stderr);
-		LwlogcSetStream(stdout);
+	assert(pFileName);
+	struct LwlogcInfoPerFile *pFile  = (struct LwlogcInfoPerFile *)calloc(NUM_OF_ELEMENTS, sizeof(struct LwlogcInfoPerFile));
+	if(!pFile) {
+		perror("calloc");
 		return false;
 	}
 
-	char buf[128] = {0};
-	const struct LwlogcInfoPerFile *pNewestLog = NULL;
+	pFile->fileIndex = *pFileIndex;
+	
+	pFile->fileSize = 0;
+	pFile->pre = pFile->next = NULL;
+	pFile->fileName = (char *)calloc(NUM_OF_ELEMENTS, strlen(pFileName) + NUM_OF_ELEMENTS);
+	assert(pFile->fileName);
+	memcpy(pFile->fileName, pFileName, strlen(pFileName));
+
+	//log file in use ...
+	logFileinUse.fileName = pFile->fileName;
+	logFileinUse.fileSize = pFile->fileSize;
+	logFileinUse.fileIndex = pFile->fileIndex;
+	
+	return pFile;
+}
+
+
+void LwlogcAddNodeToLinked(struct LwlogcInfoPerFile *pHead, struct LwlogcInfoPerFile *pFileNode)
+{
+	assert(pFileNode);
+	pHead = logConfigure.fp;
+	while(pHead->next) pHead = pHead->next;
+	pFileNode->next = pHead->next;
+	pFileNode->pre = pHead;
+	if(pHead->next) pHead->next->pre = pFileNode;
+	pHead->next = pFileNode;
+
+	return;
+}
+
+
+int LwlogcCheckFileExceedsLimit(const int *pCurLength)
+{
+	assert(pCurLength);
+	
+	if((logFileinUse.fileSize / CONVERT_BYTES_TO_MEGA) >= logConfigure.maxFileSize) {
+		
+		//关闭旧文件句柄.
+		FILE *fp = NULL;
+		fp = LwlogcGetNowStream();
+		fclose(fp);
+
+		char buf[TIME_BUF_LEN] = {0}; //hik.log10 ~ hik.log2
+		char name[TIME_BUF_LEN] = {0};
+		int logIndex = logFileinUse.fileIndex;
+		
+		const char *p = logFileinUse.fileName + strlen(logFileinUse.fileName);
+		while(isdigit(*--p)) ;
+		strncpy(buf, logFileinUse.fileName, strlen(logFileinUse.fileName) - strlen(p) + NUM_OF_ELEMENTS);
+		snprintf(name, "%s%d", buf, ++logIndex);
+
+		struct LwlogcInfoPerFile *pHead = NULL;
+		struct LwlogcInfoPerFile *pFile = NULL;
+		pFile =	LwlogcCreateNewLogs(name, &logIndex);
+		if(!pFile) {
+			fputs("LwlogcCreateNewLogs err.", stderr);
+			return false;
+
+		}
+
+		LwlogcAddNodeToLinked(pHead, pFile);
+
+		if(LwlogcGetLogsNum(logConfigure.fp) > logConfigure.maxBackupIndex) {
+			//删除最早log文件.
+		}
+
+		//获取最新的文件句柄
+		fp = fopen(name, "a+");
+		if(!fp) {
+			perror("fopen");
+			LwlogcSetStream(stdout);
+			return false;
+		}
+
+		LwlogcSetStream(fp);
+	}
 	
 	return true;
 }
