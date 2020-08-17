@@ -102,7 +102,7 @@ void LwlogcMessage(LWLogcLevel curLevel, int line, const char *funcName, const c
 	assert(message);
 	assert(funcName);
 	int len = 0;
-	char time_buf[TIME_NOW_BUF_SIZE] = {0};
+	char time_buf[TIME_BUF_LEN] = {0};
 	LwlogcTimeNow(time_buf);
 	#if defined(POSIX_THREAD)
 	pid_t pid;
@@ -121,7 +121,7 @@ void LwlogcMessage(LWLogcLevel curLevel, int line, const char *funcName, const c
 	fflush(LWLOG_STREAM);
 	if(message) free((void*)message), message = NULL;
 
-	perLogSize += len;
+	perLogSize += len; // --- 待完善, 需要加上该文件中已有的字节数.
 	if(perLogSize/CONVERT_BYTES_TO_MEGA >= logConfigure.maxFileSize) {
 		perLogSize = 0;
 
@@ -254,7 +254,6 @@ void* LwlogcReadConf(void *pFd)
 	
 	for(; ; )
 	{
-		pthread_mutex_lock(&logConfigure.mutex);
 		for(; fgets(buf_conf, TIME_NOW_BUF_SIZE, fp) != NULL; ) //really read the data: size - 1
 		{
 			char *p = NULL;
@@ -279,7 +278,7 @@ void* LwlogcReadConf(void *pFd)
 					perror("realloc");
 					return (void*)false;
 				}
-				
+
 				strncpy(logConfigure.filePath, buf_conf + len + strlen(buf), (strlen(buf_conf) - len - strlen(buf)));
 				
 			} else if((p = strstr(buf_conf, "MaxBackupIndex"))) {
@@ -333,7 +332,6 @@ void* LwlogcReadConf(void *pFd)
 
 		bInit = true;
 		rewind(fp);
-		pthread_mutex_unlock(&logConfigure.mutex);
 		sleep(3);
 	}
 
@@ -509,6 +507,15 @@ int LwlogcDeleteOldLogFile()
 int LWlogcNewestLogFile(char *pLogBuf, const size_t *bufSize)
 {
 	int maxIndex = 0;
+	if(0 == LwlogcGetLogsNum(logConfigure.fp)) {
+		//表示当前目录下还未有log文件.
+		const char *tail = logConfigure.filePath + strlen(logConfigure.filePath);
+		while('/' != *--tail) ;
+		strncpy(pLogBuf, tail + NUM_OF_ELEMENTS, *bufSize);
+		pLogBuf[strlen(pLogBuf)] = '\0';
+		return true;
+	}
+	
 	struct LwlogcInfoPerFile *pHead = logConfigure.fp;
 	struct LwlogcInfoPerFile *pT = NULL;
 	while(pHead->next)  pHead = pHead->next, (pHead->fileIndex > maxIndex) ? maxIndex = pHead->fileIndex : maxIndex;
@@ -533,8 +540,8 @@ int LWlogcNewestLogFile(char *pLogBuf, const size_t *bufSize)
 					}
 				}
 			}
-			
-			strncpy(pLogBuf, pHead->fileName, *bufSize); 
+
+			strncpy(pLogBuf, pHead->fileName, *bufSize);
 			return true;
 		}
 
