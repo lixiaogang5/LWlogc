@@ -195,7 +195,11 @@ extern int LwlogcDeleteOldLogFile();
 
 extern int LWlogcNewestLogFile(char *pLogBuf, const size_t *bufSize);
 
-extern int LwlogcCreateNewLogs(const int *pIndex);
+extern const struct LwlogcInfoPerFile *LwlogcCreateNewLogs(const char *pFileName, const int *pFileIndex);
+
+extern void LwlogcAddNodeToLinked(struct LwlogcInfoPerFile *pHead, struct LwlogcInfoPerFile *pFileNode);
+
+extern int LwlogcCheckFileExceedsLimit(const int *pCurLength);
 
 #ifdef __cplusplus
 }
