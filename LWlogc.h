@@ -1,10 +1,10 @@
 /* ***********************************************************************************
- * @Function	: 								     *
- * @Version	: 1.0.0								     *
- * @Author	: lixiaogang5							     *
- * @Date	: 2020-08-12							     *
- * @Contact 	: lxiaogang5@gmail.com						     *
- * @Company	: HIKVISION                                                          *
+ * @Function	: 								     								 *
+ * @Version		: 1.0.0								     							 *
+ * @Author		: lixiaogang5							     						 *
+ * @Date		: 2020-08-12							     						 *
+ * @Contact 	: lxiaogang5@gmail.com						     					 *
+ * @Company		: HIKVISION                                                          *
  * ***********************************************************************************
  */
 
@@ -92,6 +92,7 @@ extern "C"{
 
 #define NUM_OF_ELEMENTS	1
 #define CONVERT_BYTES_TO_MEGA	(1024 * 1024)
+#define TIME_BUF_LEN	128
 
 typedef enum {
 	false,
