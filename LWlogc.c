@@ -511,8 +511,35 @@ int LWlogcNewestLogFile(char *pLogBuf, const size_t *bufSize)
 		//表示当前目录下还未有log文件.
 		const char *tail = logConfigure.filePath + strlen(logConfigure.filePath);
 		while('/' != *--tail) ;
-		strncpy(pLogBuf, tail + NUM_OF_ELEMENTS, *bufSize);
+
+		//Ignore special characters such \r\n  \r, Repair log file name garbled caused by special characters
+		const char *spec = tail + strlen(tail);
+		while(0 == isalnum(*--spec)) ;
+		int len = strlen(tail) - strlen(spec);
+		strncpy(pLogBuf, tail + NUM_OF_ELEMENTS, *bufSize > len ? len : *bufSize);
 		pLogBuf[strlen(pLogBuf)] = '\0';
+
+		//将该节点加入fp链表中进行管理.
+		struct LwlogcInfoPerFile *pHead = NULL;
+		struct LwlogcInfoPerFile *pFile  = (struct LwlogcInfoPerFile *)calloc(NUM_OF_ELEMENTS, sizeof(struct LwlogcInfoPerFile));
+		if(!pFile) {
+			perror("calloc");
+			return false;
+		}
+
+		pFile->fileIndex = 0;
+		pFile->fileSize = 0;
+		pFile->pre = pFile->next = NULL;
+		pFile->fileName = (char *)calloc(NUM_OF_ELEMENTS, strlen(pLogBuf) + NUM_OF_ELEMENTS);
+		assert(pFile->fileName);
+		memcpy(pFile->fileName, pLogBuf, strlen(pLogBuf));
+		
+		pHead = logConfigure.fp;
+		while(pHead->next) pHead = pHead->next;
+		pFile->next = pHead->next;
+		pFile->pre = pHead;
+		if(pHead->next) pHead->next->pre = pFile;
+		pHead->next = pFile;
 		return true;
 	}
 	
