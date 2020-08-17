@@ -10,6 +10,8 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <time.h>
+#include <sys/time.h>
 #include "LWlogc.h"
 
 //extern LWLogcConf logConfigure;
@@ -18,7 +20,6 @@
 
 int main(int argc, char **argv)
 {
-	#if 0
 	#if 1
 	if(1 != LwlogcInit("lwlog.properties"))
 	{
@@ -28,7 +29,7 @@ int main(int argc, char **argv)
 
 	
 
-	for(;;) LWLOG_INFO(("lwlogc_message start TEST"));
+	for(;;) LWLOG_INFO(("lwlogc_message start TEST ...")), sleep(1);
 	#else
 
 	//FILE *fp = fopen("/data1/lixiaogang5/work/testCode/08_11/LWLogc/test/kms.log", "a+");
@@ -38,8 +39,6 @@ int main(int argc, char **argv)
 	}
 	fputs("fopen lwlog.properties succeed.", stdout);
 	#endif 
-	#endif 
-	while(1) LWLOG_INFO(("LwlogcInit JUST A TEST ...; A[%d]\n", 12345)), sleep(2);
 	return 0;
 }
 
