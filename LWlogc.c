@@ -34,10 +34,10 @@ static struct LwlogcInfoPerFile logFileinUse;
 
 pthread_attr_t attr; //可采用静态初始化方式.
 
-void LwlogcSetStream(const FILE *stream)
+void LwlogcSetStream(FILE *stream)
 {
 	if(!stream) {
-		fputs("lwlogc_set_stream param is null.", stderr);
+		fprintf(stderr, "[%s]lwlogc_set_stream param is null.", FUNCTION_NAME);
 		gStream = stdout;
 	}
 	
@@ -122,13 +122,11 @@ void LwlogcMessage(LWLogcLevel curLevel, int line, const char *funcName, const c
 	fflush(LWLOG_STREAM);
 	if(message) free((void*)message), message = NULL;
 
-	pthread_mutex_lock(&logConfigure.mutex);
 	logFileinUse.fileSize += len;
 	if(false == LwlogcCheckFileExceedsLimit(&logFileinUse.fileSize)) {
-		fputs("LwlogcCheckFileExceedsLimit failed. but the process still continues.", stderr);
+		fprintf(stderr, "[%s]LwlogcCheckFileExceedsLimit failed. but the process still continues.", FUNCTION_NAME);
 		return;
 	}
-	pthread_mutex_unlock(&logConfigure.mutex);
 	
 	return;
 }
@@ -158,32 +156,25 @@ const char *LwlogcFormatLogMessage(const char * format, ...)
 int LwlogcInit(const char *configFile)
 {
 	if(!configFile) {
-		fputs("lwlogc_init null.", stderr);
+		fprintf(stderr, "[%s]lwlogc_init parameter is empty.", FUNCTION_NAME);
 		return false;
 	}
 
-	logConfigure.filePath = NULL;
-	logConfigure.convPattern = NULL;
-	logConfigure.maxBackupIndex = 0;
-	logConfigure.append = 0;
-	logConfigure.maxFileSize = 0;
-	logConfigure.logLevel = LW_INFO;
-	logConfigure.fp = NULL;
-	pthread_mutex_init(&logConfigure.mutex, NULL);
-
+	LwlogcInitGlobalVarMemberList();
+	
 	FILE *fp = fopen(configFile, "r");
 	if(!fp) {
 		perror("fopen");
-		fclose(fp);
+		LwlogcReleaseResources(fp);
 		return false;
 	}
-	
+
 	pthread_t tid;
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 	if( 0 != pthread_create(&tid, &attr, LwlogcReadConf, (void*)fp)) {
-		fputs("pthread_create failed.", stderr);
-		pthread_attr_destroy(&attr);
+		fprintf(stderr, "[%s] pthread_create failed.", FUNCTION_NAME);
+		LwlogcReleaseResources(fp);
 		return false;
 	}
 
@@ -191,22 +182,24 @@ int LwlogcInit(const char *configFile)
 	//打开写日志文件.
 	while(!bInit) sleep(1);
 	if(false == LwlogcCouNum2SizeOfFiles(logConfigure.filePath)) {
-		fputs("LwlogcCouNum2SizeOfFiles err.", stderr);
-		pthread_attr_destroy(&attr);
+		fprintf(stderr, "[%s]LwlogcCouNum2SizeOfFiles failed.", FUNCTION_NAME);
+		LwlogcReleaseResources(fp);
 		return false;
 	}
 
 	char buf[TIME_BUF_LEN] = {0};
 	size_t buf_len = sizeof(buf);
 	if(false == LWlogcNewestLogFile(buf, &buf_len)) {
-		fputs("LWlogcNewestLogFile failed.", stderr);
-		pthread_attr_destroy(&attr);
+		fprintf(stderr, "[%s]LWlogcNewestLogFile failed.", FUNCTION_NAME);
+		LwlogcReleaseResources(fp);
 		return false;
 	}
 
 	FILE *fpN = fopen(buf, "a+");
 	if(!fpN) {
 		perror("fopen");
+		fclose(fpN);
+		LwlogcReleaseResources(fp);
 		return false;
 	}
 	
@@ -220,7 +213,7 @@ int LwlogcInit(const char *configFile)
 void* LwlogcReadConf(void *pFd)
 {
 	if(!pFd) {
-		fputs("lwlogc_read_conf param is null.", stderr);
+		fprintf(stderr, "[%s]lwlogc_read_conf param is null.", FUNCTION_NAME);
 		return (void*)false;
 	}
 
@@ -252,7 +245,8 @@ void* LwlogcReadConf(void *pFd)
 				if(EOF == len 
 				   || 0 == len
 				   || -1 == len) {
-					fputs("sscanf conf file failed.", stderr);
+					fprintf(stderr, "[%s]sscanf conf file failed.", FUNCTION_NAME);
+					LwlogcReleaseResources(fp);
 					return (void*)false;
 				}
 
@@ -277,6 +271,7 @@ void* LwlogcReadConf(void *pFd)
 				while(*p++ != '=');
 				while(isspace(*(++p)));
 				if(!p) {
+					fprintf(stdout, "[%s]lwlog.Threshold Use default print level(stdout).", FUNCTION_NAME);
 					logConfigure.logLevel = LW_INFO; //如果不填写, 则默认INFO
 				}
 				
@@ -306,8 +301,8 @@ void* LwlogcReadConf(void *pFd)
 				}
 
 				default: {
-					fputs("lwlog.Threshold params err.", stderr);
-					fclose(fp);
+					fprintf(stderr, "[%s]lwlog.Threshold Parameter error.", FUNCTION_NAME);
+					LwlogcReleaseResources(fp);
 					return (void*)false;
 				}
 				}
@@ -316,11 +311,10 @@ void* LwlogcReadConf(void *pFd)
 
 		bInit = true;
 		rewind(fp);
-		sleep(3);
+		sleep(5);
 	}
 
-	pthread_attr_destroy(&attr);
-	fclose(fp);
+	LwlogcReleaseResources(fp);
 	return (void*)true;
 }
 
@@ -329,7 +323,7 @@ void* LwlogcReadConf(void *pFd)
 int LwlogcCouNum2SizeOfFiles(const char *logFilesPath)
 {
 	if(!logFilesPath) {
-		fputs("LwlogcCouNum2SizeOfFiles parameter is empty.", stderr);
+		fprintf(stderr, "[%s]LwlogcCouNum2SizeOfFiles parameter is empty.", FUNCTION_NAME);
 		return false;
 	}
 
@@ -405,7 +399,7 @@ int LwlogcCouNum2SizeOfFiles(const char *logFilesPath)
 				return false;
 			}
 			
-			pFile->fileName = (char*)calloc(NUM_OF_ELEMENTS, strlen(rddir->d_name) +    1);
+			pFile->fileName = (char*)calloc(NUM_OF_ELEMENTS, strlen(rddir->d_name) + NUM_OF_ELEMENTS);
 			if(!pFile->fileName) {
 				perror("calloc");
 				return false;
@@ -431,7 +425,7 @@ int LwlogcCouNum2SizeOfFiles(const char *logFilesPath)
 int LwlogcGetLogsNum(const struct LwlogcInfoPerFile *pHead)
 {
 	if(!pHead) {
-		fputs("LwlogcGetLogsNum null pointer.", stderr);
+		fprintf(stdout, "[%s]LwlogcGetLogsNum null pointer.", FUNCTION_NAME);
 		return -1;
 	}
 
@@ -446,10 +440,11 @@ int LwlogcGetLogsNum(const struct LwlogcInfoPerFile *pHead)
 
 int LwlogcDeleteOldLogFile()
 {
-	#if 0
+	pthread_mutex_lock(&logConfigure.mutex);
 	int minIndex = 0;
 	struct LwlogcInfoPerFile *pHead = logConfigure.fp;
 	struct LwlogcInfoPerFile *pT = NULL;
+	
 	while(pHead->next) pHead = pHead->next, (pHead->fileIndex < minIndex) ? minIndex = pHead->fileIndex : minIndex;
 	while(pHead->pre) {
 		if(minIndex == pHead->fileIndex) {
@@ -463,24 +458,31 @@ int LwlogcDeleteOldLogFile()
 
 			if(!pHead->next) {
 				//last node.
-				pT = pHead->pre;
-				pT->next = NULL;
+				pHead->pre->next = NULL;
 			}else {
+				//pT = pHead->pre;
+				//pT->next = pHead->next;
+				//pHead->next->pre = pT;
+
 				pT = pHead->pre;
 				pT->next = pHead->next;
 				pHead->next->pre = pT;
 			}
 
+			assert(pHead->fileName);
 			free(pHead->fileName);
 			pHead->fileName = NULL;
+			assert(pHead);
 			free(pHead);
 			pHead = NULL;
+
+			return true;
 		}
 
 		pHead = pHead->pre;
 	}
-	#else 
-	#endif 
+
+	pthread_mutex_unlock(&logConfigure.mutex);
 	return true;
 }
 
@@ -488,67 +490,53 @@ int LwlogcDeleteOldLogFile()
 int LWlogcNewestLogFile(char *pLogBuf, const size_t *bufSize)
 {
 	int maxIndex = 0;
-	struct LwlogcInfoPerFile *pHead = NULL;
-	struct LwlogcInfoPerFile *pFile = NULL;
-	
+
 	if(0 == LwlogcGetLogsNum(logConfigure.fp)) {
-		//表示当前目录下还未有log文件.
-		const char *tail = logConfigure.filePath + strlen(logConfigure.filePath);
-		while('/' != *--tail) ;
-
-		//Ignore special characters such \r\n  \r, Repair log file name garbled caused by special characters
-		const char *spec = tail + strlen(tail);
-		while(0 == isalnum(*--spec)) ;
-		int len = strlen(tail) - strlen(spec);
-		strncpy(pLogBuf, tail + NUM_OF_ELEMENTS, *bufSize > len ? len : *bufSize);
-		pLogBuf[strlen(pLogBuf)] = '\0';
-
-		//将该节点加入fp链表中进行管理.
-		int logIndex = 0;
-		pFile = LwlogcCreateNewLogs(pLogBuf, &logIndex);
-		if(!pFile) {
-			fputs("LwlogcCreateNewLogs", stderr);
+		if(false == LwlogcCreateFirstLogFile(pLogBuf, bufSize)) {
+			fprintf(stderr, "[%s]LwlogcCreateFirstLogFile failed.", FUNCTION_NAME);
 			return false;
 		}
-		
-		LwlogcAddNodeToLinked(pHead, pFile);
 	
 		return true;
 	}
 	
-	struct LwlogcInfoPerFile *pTemp = logConfigure.fp;
-	struct LwlogcInfoPerFile *pT = NULL;
-	while(pTemp->next)  pTemp = pTemp->next, (pTemp->fileIndex > maxIndex) ? maxIndex = pTemp->fileIndex : maxIndex;
-	while(pTemp->pre) {
-		if(maxIndex == pTemp->fileIndex) {
+	struct LwlogcInfoPerFile *pHead = NULL;
+	pHead = logConfigure.fp;
+	
+	while(pHead->next)  pHead = pHead->next, (pHead->fileIndex > maxIndex) ? maxIndex = pHead->fileIndex : maxIndex;
+	while(pHead->pre) {
+		if(maxIndex == pHead->fileIndex) {
 			
 			//若该log文件已经超过用户指定预期的大小, 则新创建log文件.
-			if(pTemp->fileSize/CONVERT_BYTES_TO_MEGA >= logConfigure.maxFileSize) {
+			if((pHead->fileSize / CONVERT_BYTES_TO_MEGA) >= logConfigure.maxFileSize) {
 
 				char buf[TIME_BUF_LEN] = {0};
 				char arr[TIME_BUF_LEN/2] = {0};
-				const char *t = pTemp->fileName;
+				const char *t = pHead->fileName;
 				while('.' != *(++t));
-				strncpy(arr, pTemp->fileName, strlen(pTemp->fileName) - strlen(t));
+				strncpy(arr, pHead->fileName, strlen(pHead->fileName) - strlen(t));
 				snprintf(buf, sizeof(buf), "%s.log%d", arr, ++maxIndex);
 				memcpy(pLogBuf, buf, *bufSize);
 
 				//new node and add to linked list.
-				int logIndex = pTemp->fileIndex;
+				int logIndex = pHead->fileIndex;
 				logIndex ++;
+				
+				struct LwlogcInfoPerFile *pFile = NULL;
 				pFile = LwlogcCreateNewLogs(pLogBuf, &logIndex);
 				if(!pFile) {
-					fputs("LwlogcCreateNewLogs", stderr);
+					fprintf(stderr, "[%s]LwlogcCreateNewLogs failed.", FUNCTION_NAME);
 					return false;
 				}
 
-				LwlogcAddNodeToLinked(pHead, pFile);
+				struct LwlogcInfoPerFile *pHNode = NULL;
+				LwlogcAddNodeToLinked(pHNode, pFile);
 				
 				//同时判断log文件数量是否超过用户指定数量.
 				if(LwlogcGetLogsNum(logConfigure.fp) > logConfigure.maxBackupIndex) {
 					//删除最旧的log文件.
 					if(false == LwlogcDeleteOldLogFile()) {
-						fputs("LwlogcDeleteOldLog err.", stderr);
+						fprintf(stderr, "[%s]LwlogcDeleteOldLog failed.", FUNCTION_NAME);
 						return false;
 					}
 				}
@@ -556,15 +544,20 @@ int LWlogcNewestLogFile(char *pLogBuf, const size_t *bufSize)
 				return true;
 			}
 
-			strncpy(pLogBuf, pTemp->fileName, *bufSize);
-			//Find the corresponding node information according to the node name
+			strncpy(pLogBuf, pHead->fileName, *bufSize);
+			pthread_rwlock_wrlock(&logFileinUse.rwlock);
+			logFileinUse.fileName = pHead->fileName;
+			logFileinUse.fileIndex = pHead->fileIndex;
+			logFileinUse.fileSize = pHead->fileSize;
+			pthread_rwlock_unlock(&logFileinUse.rwlock);
+				
 			return true;
 		}
 
-		pTemp = pTemp->pre;
+		pHead = pHead->pre;
 	}
 	
-	if(!pTemp && 0 == strlen(pLogBuf)) return false;
+	if(!pHead->pre && 0 == strlen(pLogBuf)) return false;
 	return true;
 }
 
@@ -587,9 +580,11 @@ const struct LwlogcInfoPerFile *LwlogcCreateNewLogs(const char *pFileName, const
 	memcpy(pFile->fileName, pFileName, strlen(pFileName));
 
 	//log file in use ...
+	pthread_rwlock_wrlock(&logFileinUse.rwlock);
 	logFileinUse.fileName = pFile->fileName;
 	logFileinUse.fileSize = pFile->fileSize;
 	logFileinUse.fileIndex = pFile->fileIndex;
+	pthread_rwlock_unlock(&logFileinUse.rwlock);
 	
 	return pFile;
 }
@@ -598,12 +593,20 @@ const struct LwlogcInfoPerFile *LwlogcCreateNewLogs(const char *pFileName, const
 void LwlogcAddNodeToLinked(struct LwlogcInfoPerFile *pHead, struct LwlogcInfoPerFile *pFileNode)
 {
 	assert(pFileNode);
+	pthread_mutex_lock(&logConfigure.mutex);
 	pHead = logConfigure.fp;
 	while(pHead->next) pHead = pHead->next;
+	#if 0
 	pFileNode->next = pHead->next;
 	pFileNode->pre = pHead;
 	if(pHead->next) pHead->next->pre = pFileNode;
 	pHead->next = pFileNode;
+	#else
+	pHead->next = pFileNode;
+	pFileNode->pre = pHead;
+	pFileNode->next = NULL;
+	#endif 
+	pthread_mutex_unlock(&logConfigure.mutex);
 
 	return;
 }
@@ -627,13 +630,13 @@ int LwlogcCheckFileExceedsLimit(const int *pCurLength)
 		const char *p = logFileinUse.fileName + strlen(logFileinUse.fileName);
 		while(isdigit(*--p)) ;
 		strncpy(buf, logFileinUse.fileName, strlen(logFileinUse.fileName) - strlen(p) + NUM_OF_ELEMENTS);
-		snprintf(name, "%s%d", buf, ++logIndex);
+		snprintf(name, TIME_BUF_LEN, "%s%d", buf, ++logIndex);
 
 		struct LwlogcInfoPerFile *pHead = NULL;
 		struct LwlogcInfoPerFile *pFile = NULL;
-		pFile =	LwlogcCreateNewLogs(name, &logIndex);
+		pFile =	LwlogcCreateNewLogs((const char*)name, &logIndex);
 		if(!pFile) {
-			fputs("LwlogcCreateNewLogs err.", stderr);
+			fprintf(stderr, "[%s]LwlogcCreateNewLogs failed.", FUNCTION_NAME);
 			return false;
 
 		}
@@ -641,7 +644,11 @@ int LwlogcCheckFileExceedsLimit(const int *pCurLength)
 		LwlogcAddNodeToLinked(pHead, pFile);
 
 		if(LwlogcGetLogsNum(logConfigure.fp) > logConfigure.maxBackupIndex) {
-			//删除最早log文件.
+			//删除最早log文件. -修改为sleep, 等待log删除线程继续处理.  ---待做
+			if(false == LwlogcDeleteOldLogFile()) {
+				fprintf(stderr, "%s[LwlogcDeleteOldLogFile] failed.", FUNCTION_NAME);
+				return false;
+			}
 		}
 
 		//获取最新的文件句柄
@@ -658,4 +665,64 @@ int LwlogcCheckFileExceedsLimit(const int *pCurLength)
 	return true;
 }
 
+
+
+int LwlogcCreateFirstLogFile(char *pLogBuf, const size_t *bufSize)
+{
+	//表示当前目录下还未有log文件.
+	const char *tail = logConfigure.filePath + strlen(logConfigure.filePath);
+	while('/' != *--tail) ;
+
+	//Ignore special characters such \r\n  \r, Repair log file name garbled caused by special characters
+	const char *spec = tail + strlen(tail);
+	while(0 == isalnum(*--spec)) ;
+	int len = strlen(tail) - strlen(spec);
+	strncpy(pLogBuf, tail + NUM_OF_ELEMENTS, *bufSize > len ? len : *bufSize);
+	pLogBuf[strlen(pLogBuf)] = '\0';
+
+	//将该节点加入fp链表中进行管理.
+	int logIndex = 0;
+	struct LwlogcInfoPerFile *pFile = NULL;
+	pFile = LwlogcCreateNewLogs((const char*)pLogBuf, &logIndex);
+	if(!pFile) {
+		fprintf(stderr,"[%s]LwlogcCreateNewLogs failed.", FUNCTION_NAME);
+		return false;
+	}
+
+	struct LwlogcInfoPerFile *pHead = NULL;
+	LwlogcAddNodeToLinked(pHead, pFile);
+	return true;
+}
+
+
+void LwlogcReleaseResources(FILE *pNowStream)
+{
+	if(pNowStream) fclose(pNowStream);
+
+	pthread_rwlock_destroy(&logFileinUse.rwlock);
+	pthread_attr_destroy(&attr);
+	pthread_mutex_destroy(&logConfigure.mutex);
+	return;
+}
+
+
+void LwlogcInitGlobalVarMemberList()
+{
+	logConfigure.filePath = NULL;
+	logConfigure.convPattern = NULL;
+	logConfigure.maxBackupIndex = 0;
+	logConfigure.append = 0;
+	logConfigure.maxFileSize = 0;
+	logConfigure.logLevel = LW_INFO;
+	logConfigure.fp = NULL;
+	pthread_mutex_init(&logConfigure.mutex, NULL);
+
+	logFileinUse.fileName = NULL;
+	logFileinUse.fileIndex = -1;
+	logFileinUse.fileSize = 0;
+	logFileinUse.pre = logFileinUse.next = NULL;
+	pthread_rwlock_init(&logFileinUse.rwlock, NULL);
+
+	return;
+}
 
