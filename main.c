@@ -20,7 +20,7 @@
 
 int main(int argc, char **argv)
 {
-	#if 1
+
 	if(1 != LwlogcInit("lwlog.properties"))
 	{
 		fputs("lwlog_init failed.", stderr);
@@ -28,17 +28,8 @@ int main(int argc, char **argv)
 	}
 
 	
-
 	for(;;) LWLOG_INFO(("lwlogc_message start TEST ...")), sleep(1);
-	#else
-
-	//FILE *fp = fopen("/data1/lixiaogang5/work/testCode/08_11/LWLogc/test/kms.log", "a+");
-	FILE *fp = fopen("lwlog.properties", "a+");
-	if(NULL == fp) {
-		fputs("fopen failed. ", stderr);
-	}
-	fputs("fopen lwlog.properties succeed.", stdout);
-	#endif 
+	
 	return 0;
 }
 
