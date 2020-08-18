@@ -93,6 +93,7 @@ extern "C"{
 #define NUM_OF_ELEMENTS	1
 #define CONVERT_BYTES_TO_MEGA	(1024 * 1024)
 #define TIME_BUF_LEN	128
+#define FUNCTION_NAME	__FUNCTION__
 
 typedef enum {
 	false,
@@ -115,6 +116,7 @@ typedef enum
 
 struct LwlogcInfoPerFile{
 	struct LwlogcInfoPerFile *pre, *next;
+	pthread_rwlock_t  rwlock;
 	char *fileName;
 	int fileSize;
 	int fileIndex; //当前目录下log文件的最大索引号. eg: test.log.10, 则fineIndex = 10
@@ -169,7 +171,7 @@ extern void LwlogcMessage(LWLogcLevel curLevel, int line, const char *funcName, 
 /**
 *  @name LWlogc set i/o steam
 */
-extern void LwlogcSetStream(const FILE *stream);
+extern void LwlogcSetStream(FILE *stream);
 
 
 /**
@@ -201,6 +203,11 @@ extern void LwlogcAddNodeToLinked(struct LwlogcInfoPerFile *pHead, struct Lwlogc
 
 extern int LwlogcCheckFileExceedsLimit(const int *pCurLength);
 
+extern int LwlogcCreateFirstLogFile(char *pLogBuf, const size_t *bufSize);
+
+extern void LwlogcReleaseResources(FILE *pNowStream);
+
+extern void LwlogcInitGlobalVarMemberList();
 #ifdef __cplusplus
 }
 #endif 
