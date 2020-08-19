@@ -4,7 +4,6 @@
 
 ​        <font face="Lucida Console" size=4 color = black>LWlogc是一款基于纯C开发的轻量级日志(log)记录框架。主要由两个文件组成，分别是：LWlogc.c和LWlogc.h；代码总行数在千行左右，非常轻量和简洁， API通俗易懂。LWlogc日志记录框架能非常友好地嵌入到任何你所要开发的项目中，它具有良好的移植性；并且它占用的资源（包括但不限于内存、磁盘空间、CPU等）非常之低。LWlogc具有高稳定性、强可靠性、可扩展性等特点。</font>
 
-<table><tr><td bgcolor=#00FA9A></td></tr></table>
 
 ## 1.1 LWlogc特性
 
@@ -65,7 +64,6 @@ lwlog.ConversionPattern = %Y-%M-%D
 
 ## 1.2 LWlogc使用   
 
-<table><tr><td bgcolor=#00FA9A></td></tr></table>
 
 ### 1.2.1 编译LWlogc动态库 
 
