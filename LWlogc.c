@@ -13,7 +13,7 @@
 #include <assert.h>
 #include <string.h>
 #include <time.h>
-
+#include <errno.h>
 #include <stdarg.h>
 #include <ctype.h>
 #include <pthread.h>
@@ -122,7 +122,9 @@ void LwlogcMessage(LWLogcLevel curLevel, int line, const char *funcName, const c
 	fflush(LWLOG_STREAM);
 	if(message) free((void*)message), message = NULL;
 
+	pthread_rwlock_wrlock(&logFileinUse.rwlock);
 	logFileinUse.fileSize += len;
+	pthread_rwlock_unlock(&logFileinUse.rwlock);
 	if(false == LwlogcCheckFileExceedsLimit(&logFileinUse.fileSize)) {
 		fprintf(stderr, "[%s]LwlogcCheckFileExceedsLimit failed. but the process still continues.", FUNCTION_NAME);
 		return;
@@ -189,8 +191,8 @@ int LwlogcInit(const char *configFile)
 
 	char buf[TIME_BUF_LEN] = {0};
 	size_t buf_len = sizeof(buf);
-	if(false == LWlogcNewestLogFile(buf, &buf_len)) {
-		fprintf(stderr, "[%s]LWlogcNewestLogFile failed.", FUNCTION_NAME);
+	if(false == LwlogcNewestLogFile(buf, &buf_len)) {
+		fprintf(stderr, "[%s]LwlogcNewestLogFile failed.", FUNCTION_NAME);
 		LwlogcReleaseResources(fp);
 		return false;
 	}
@@ -204,6 +206,7 @@ int LwlogcInit(const char *configFile)
 	}
 	
 	LwlogcSetStream(fpN);
+	LwlogcRegularlyCheckNumOfLogFiles();
 	return true;
 }
 
@@ -422,17 +425,13 @@ int LwlogcCouNum2SizeOfFiles(const char *logFilesPath)
 }
 
 
-int LwlogcGetLogsNum(const struct LwlogcInfoPerFile *pHead)
+int LwlogcGetLogsNum()
 {
-	if(!pHead) {
-		fprintf(stdout, "[%s]LwlogcGetLogsNum null pointer.", FUNCTION_NAME);
-		return -1;
-	}
-
 	int num = 0;
-	const struct LwlogcInfoPerFile *p = pHead;
-	while(p->next) num++, p = p->next;
-
+	const struct LwlogcInfoPerFile *pHead = NULL;
+	pHead = logConfigure.fp;
+	
+	while(pHead->next) num++, pHead = pHead->next;
 	return num;
 }
 
@@ -440,58 +439,58 @@ int LwlogcGetLogsNum(const struct LwlogcInfoPerFile *pHead)
 
 int LwlogcDeleteOldLogFile()
 {
-	pthread_mutex_lock(&logConfigure.mutex);
-	int minIndex = 0;
-	struct LwlogcInfoPerFile *pHead = logConfigure.fp;
-	struct LwlogcInfoPerFile *pT = NULL;
+	/*
+     * Fix the defect. After deleting the node with the smallest serial number for the first time, 
+     * it is impossible to have a value more than 0.
+     */
+	while(EBUSY == pthread_mutex_trylock(&logConfigure.mutex)) sleep(1);
 	
-	while(pHead->next) pHead = pHead->next, (pHead->fileIndex < minIndex) ? minIndex = pHead->fileIndex : minIndex;
-	while(pHead->pre) {
-		if(minIndex == pHead->fileIndex) {
-			//删除旧log文件.
-			char buf[128] = {0};
-			strncpy(buf, pHead->fileName, sizeof(buf));
-			if(0 != unlink(buf)) {
-				perror("unlink");
-				return false;
-			}
+	char buf[128] = {0};
+	struct LwlogcInfoPerFile *pHead = logConfigure.fp;
+	struct LwlogcInfoPerFile *pNext = pHead->next;
 
-			if(!pHead->next) {
-				//last node.
-				pHead->pre->next = NULL;
-			}else {
-				//pT = pHead->pre;
-				//pT->next = pHead->next;
-				//pHead->next->pre = pT;
-
-				pT = pHead->pre;
-				pT->next = pHead->next;
-				pHead->next->pre = pT;
-			}
-
-			assert(pHead->fileName);
-			free(pHead->fileName);
-			pHead->fileName = NULL;
-			assert(pHead);
-			free(pHead);
-			pHead = NULL;
-
-			return true;
+	struct LwlogcInfoPerFile *pPre = pHead;
+	struct LwlogcInfoPerFile *pMinNode = pNext;
+	while(pNext) {
+		if(pNext->fileIndex < pMinNode->fileIndex) {
+			pMinNode = pNext;
+			pPre = pHead;
 		}
 
-		pHead = pHead->pre;
+		pHead = pNext;
+		pNext = pNext->next;
 	}
+
+	if(!pMinNode->next) {
+		pPre->next = NULL;
+	} else {
+		pPre->next = pMinNode->next;
+		pMinNode->next->pre = pPre;
+	}
+	
+	strncpy(buf, pMinNode->fileName, sizeof(buf));
+	if(0 != unlink(buf)) {
+		perror("unlink");
+		return false;
+	}
+
+	assert(pMinNode->fileName);
+	free(pMinNode->fileName);
+	pMinNode->fileName = NULL;
+	assert(pMinNode);
+	free(pMinNode);
+	pHead = NULL;
 
 	pthread_mutex_unlock(&logConfigure.mutex);
 	return true;
 }
 
 
-int LWlogcNewestLogFile(char *pLogBuf, const size_t *bufSize)
+int LwlogcNewestLogFile(char *pLogBuf, const size_t *bufSize)
 {
 	int maxIndex = 0;
 
-	if(0 == LwlogcGetLogsNum(logConfigure.fp)) {
+	if(0 == LwlogcGetLogsNum()) {
 		if(false == LwlogcCreateFirstLogFile(pLogBuf, bufSize)) {
 			fprintf(stderr, "[%s]LwlogcCreateFirstLogFile failed.", FUNCTION_NAME);
 			return false;
@@ -533,7 +532,7 @@ int LWlogcNewestLogFile(char *pLogBuf, const size_t *bufSize)
 				LwlogcAddNodeToLinked(pHNode, pFile);
 				
 				//同时判断log文件数量是否超过用户指定数量.
-				if(LwlogcGetLogsNum(logConfigure.fp) > logConfigure.maxBackupIndex) {
+				if(LwlogcGetLogsNum() > logConfigure.maxBackupIndex) {
 					//删除最旧的log文件.
 					if(false == LwlogcDeleteOldLogFile()) {
 						fprintf(stderr, "[%s]LwlogcDeleteOldLog failed.", FUNCTION_NAME);
@@ -593,10 +592,10 @@ const struct LwlogcInfoPerFile *LwlogcCreateNewLogs(const char *pFileName, const
 void LwlogcAddNodeToLinked(struct LwlogcInfoPerFile *pHead, struct LwlogcInfoPerFile *pFileNode)
 {
 	assert(pFileNode);
-	pthread_mutex_lock(&logConfigure.mutex);
+	while(EBUSY == pthread_mutex_trylock(&logConfigure.mutex)) ;
 	pHead = logConfigure.fp;
 	while(pHead->next) pHead = pHead->next;
-	#if 0
+	#if 1
 	pFileNode->next = pHead->next;
 	pFileNode->pre = pHead;
 	if(pHead->next) pHead->next->pre = pFileNode;
@@ -643,12 +642,10 @@ int LwlogcCheckFileExceedsLimit(const int *pCurLength)
 
 		LwlogcAddNodeToLinked(pHead, pFile);
 
-		if(LwlogcGetLogsNum(logConfigure.fp) > logConfigure.maxBackupIndex) {
+		if(LwlogcGetLogsNum() > logConfigure.maxBackupIndex) {
 			//删除最早log文件. -修改为sleep, 等待log删除线程继续处理.  ---待做
-			if(false == LwlogcDeleteOldLogFile()) {
-				fprintf(stderr, "%s[LwlogcDeleteOldLogFile] failed.", FUNCTION_NAME);
-				return false;
-			}
+			fprintf(stdout, "[%s]The number of log files exceeds the limit, wait for 1 second.", FUNCTION_NAME);
+			sleep(1);
 		}
 
 		//获取最新的文件句柄
@@ -724,5 +721,44 @@ void LwlogcInitGlobalVarMemberList()
 	pthread_rwlock_init(&logFileinUse.rwlock, NULL);
 
 	return;
+}
+
+
+
+int LwlogcRegularlyCheckNumOfLogFiles()
+{
+	pthread_t tid;
+	pthread_attr_t attr_t;
+
+	if(0 != pthread_attr_init(&attr_t)) {
+		fprintf(stderr, "[%s]pthread_attr_init failed.", FUNCTION_NAME);
+		return false;
+	}
+
+	if(0 != pthread_attr_setdetachstate(&attr_t, PTHREAD_CREATE_DETACHED)) {
+		fprintf(stderr, "[%s]pthread_attr_setdetachstate failed.", FUNCTION_NAME);
+		pthread_attr_destroy(&attr_t);
+		return false;
+	}
+
+	if(0 != pthread_create(&tid, &attr_t, LwlogcTraverse2DelLogFiles, NULL)) {
+		fprintf(stderr, "[%s]pthread_create failed.", FUNCTION_NAME);
+		pthread_attr_destroy(&attr_t);
+		return false;
+	}
+
+	return true;
+}
+
+
+void *LwlogcTraverse2DelLogFiles(void *pThreadParm)
+{
+	for(;;) {
+		
+		if(LwlogcGetLogsNum() > logConfigure.maxBackupIndex) LwlogcDeleteOldLogFile();
+		else sleep(5);
+	}
+
+	return NULL;
 }
 
