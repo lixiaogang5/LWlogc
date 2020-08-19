@@ -191,11 +191,11 @@ void* LwlogcReadConf(void *pFd);
 
 extern int LwlogcCouNum2SizeOfFiles();
 
-extern int LwlogcGetLogsNum(const struct LwlogcInfoPerFile *pHead);
+extern int LwlogcGetLogsNum();
 
 extern int LwlogcDeleteOldLogFile();
 
-extern int LWlogcNewestLogFile(char *pLogBuf, const size_t *bufSize);
+extern int LwlogcNewestLogFile(char *pLogBuf, const size_t *bufSize);
 
 extern const struct LwlogcInfoPerFile *LwlogcCreateNewLogs(const char *pFileName, const int *pFileIndex);
 
@@ -208,6 +208,10 @@ extern int LwlogcCreateFirstLogFile(char *pLogBuf, const size_t *bufSize);
 extern void LwlogcReleaseResources(FILE *pNowStream);
 
 extern void LwlogcInitGlobalVarMemberList();
+
+extern int LwlogcRegularlyCheckNumOfLogFiles();
+
+extern void *LwlogcTraverse2DelLogFiles(void *pThreadParm);
 #ifdef __cplusplus
 }
 #endif 
