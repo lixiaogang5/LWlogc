@@ -101,6 +101,7 @@ typedef enum {
 }bool;
 
 
+
 /**
 *  @name Debug levels
 */
@@ -139,8 +140,22 @@ typedef struct
 }LWLogcConf;
 
 
-
 extern LWLogcConf logConfigure;
+
+#define LWLOGC_ERROR(x)	if(logConfigure.logLevel >= LW_ERROR) \
+		LwlogcMessage(LW_ERROR, __LINE__, FUNCTION_NAME, LwlogcFormatLogMessage(x))
+		
+#define LWLOGC_WARN(x)  if(logConfigure.logLevel >= LW_WARN) \
+		LwlogcMessage(LW_WARN, __LINE__, FUNCTION_NAME, LwlogcFormatLogMessage(x))
+		
+#define LWLOGC_INFO(x)  if(logConfigure.logLevel >= LW_INFO) \
+		LwlogcMessage(LW_INFO, __LINE__, FUNCTION_NAME, LwlogcFormatLogMessage(x))
+
+#define LWLOGC_DEBUG(x) if(logConfigure.logLevel == LW_DEBUG) \
+		LwlogcMessage(LW_DEBUG, __LINE__, FUNCTION_NAME, LwlogcFormatLogMessage(x))
+
+
+
 
 /**
 *  @name LWlogc now time
