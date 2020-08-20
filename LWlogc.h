@@ -1,10 +1,10 @@
 /* ***********************************************************************************
- * @Function	: 								     								 *
- * @Version		: 1.0.0								     							 *
- * @Author		: lixiaogang5							     						 *
- * @Date		: 2020-08-12							     						 *
- * @Contact 	: lxiaogang5@gmail.com						     					 *
- * @Company		: HIKVISION                                                          *
+ * @Function	: 								     *
+ * @Version	: 1.0.0								     *
+ * @Author	: lixiaogang5							     *
+ * @Date	: 2020-08-12							     *
+ * @Contact 	: lxiaogang5@gmail.com						     *
+ * @Company	: HIKVISION                                                          *
  * ***********************************************************************************
  */
 
