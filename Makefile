@@ -18,5 +18,5 @@ $(LW_LIB):
 
 .PHONY:clean
 clean:
-	-@rm -f $(LW_LIB) *.o
+	-@rm -f $(LW_LIB) *.o $(LIB_PATH)/$(LW_LIB)
 
