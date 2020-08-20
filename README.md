@@ -91,7 +91,7 @@ lwlog.ConversionPattern = %Y-%M-%D
     ├── main.c
     └── Makefile
 ```
+<img src="https://img-blog.csdnimg.cn/20200820122919489.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2xpeGlhb2dhbmdfdGhlYW5zd2Vy,size_16,color_FFFFFF,t_70#pic_center" width="700" alt="note"/>
 
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20200820122919489.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2xpeGlhb2dhbmdfdGhlYW5zd2Vy,size_16,color_FFFFFF,t_70#pic_center)
 
 ## 2.1  LWlogc流程图
