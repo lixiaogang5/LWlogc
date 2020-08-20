@@ -75,8 +75,6 @@ lwlog.ConversionPattern = %Y-%M-%D
 
 ## 2.2 LWlogc服务启动流程
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;对于LWlogc日志记录框架库，其服务的启动流程逻辑结构图如下所示。该图较为详细的阐述了服务启动的细节和核心。以及对于各环节的出错处理。阅读源码时候，结合本图，会更加高效。</font>
-
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20200820165425615.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2xpeGlhb2dhbmdfdGhlYW5zd2Vy,size_16,color_FFFFFF,t_70#pic_center)
 ![image](https://img-blog.csdnimg.cn/20200820165425615.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2xpeGlhb2dhbmdfdGhlYW5zd2Vy,size_16,color_FFFFFF,t_70#pic_center)
 ## 2.3 使用LWlogc
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;若将该LWlogc应用于你项目中，可以有两种方式：</font>
