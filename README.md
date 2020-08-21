@@ -125,8 +125,8 @@ lwlog.MaxFileSize = 800
 # 3. LWlogc依赖库
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;LWlogc当前仅依赖POSIX线程库，即libpthread.so。</font> 
 
-# 4. LWlogc位于gitbuh具体位置
-<font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;该日志记录框架库是由我本人利用业余时间单独开发，其具体位置在: [<font face="Lucida Console" size=4 color = red><u>LWlogc</u><font>](https://github.com/lixiaogang5/LWlogc)。 欢迎使用，也非常欢迎大家的更好建议。</font>
+# 4. LWlogc默认打开文件句柄个数
+<font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;默认情况下，LWlogc日志记录框架库打开5个文件句柄，分别是：0（标准输入）、1（标准输出）、2（标准错误）、3（配置文件）和4（当前正在写的log文件句柄）。 如果初始化失败，则只占用4个文件句柄，默认向文件句柄1输出打印。（当然，前提是用户允许LwlogcInit（）初始化失败，还继续运行的时候）。 查看方式：当服务运行时候， cat /proc/PID/fd/</font>
 
 # 5. LWlogc待完成任务
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;当前的LWlogc能够很好的应用。但是它还存在着一些局限性。比如一个项目里面，有很多个模块划分；协议处理模块、数据库数据模块、图片存储模块等等。然后希望每个不同模块用不同的log日志文件去分别记录，分门别类，无论是排查问题，还是检索数据，目标都会显得更加清晰、高效。</font>
