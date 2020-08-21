@@ -82,6 +82,9 @@ lwlog.ConversionPattern = %Y-%M-%D
 
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;方式二: 使用LWlog.*同级目录下的Makefile编译出LWlogc日志记录库的动态库 libLWlogc.so， 然后将该动态库放在你的项目中，编译成果物物时候链接进去。对于该方式的具体使用可以参考同级目录test/下的main.c测试文件的所有。</font>
 
+* <font face="Lucida Console" size=4 color = red>&ensp;&ensp; &ensp;&ensp;`无论是使用方式一，还是方式二，在你的项目工程里，仅需明确指定初始化LwlogcInit()函数(参数是lwlog.properties配置文件路径)， 剩余的工作交给LWlogc日志记录库自己内部完成。因此使用起来是很方便的。`</font>
+
+
 ## 2.4 LWlogc内存、cpu占用
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;测试环境(VMware虚拟机环境)</font>
 
