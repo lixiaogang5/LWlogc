@@ -78,25 +78,25 @@ lwlog.ConversionPattern = %Y-%M-%D
 ![image](https://img-blog.csdnimg.cn/20200820165425615.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2xpeGlhb2dhbmdfdGhlYW5zd2Vy,size_16,color_FFFFFF,t_70#pic_center)
 ## 2.3 使用LWlogc
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;若将该LWlogc应用于你项目中，可以有两种方式：</font>
-- ![#f03c15](https://placehold.it/15/f03c15/000000?text=+) <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;方式一: 直接将LWlogc.c和LWlogc.h两个文件嵌入到你的项目中，然后使用.h文件中定义的四个宏。LWLOGC_ERROR、LWLOGC_WARN、LWLOGC_INFO、LWLOGC_DEBUG。当然你可也完全可以根据实际项目所要对其进行宏重新定义。</font>
+- ![#f03c15](https://placehold.it/15/f03c15/000000?text=+) <font face="Lucida Console" size=4 color = black>方式一: 直接将LWlogc.c和LWlogc.h两个文件嵌入到你的项目中，然后使用.h文件中定义的四个宏。LWLOGC_ERROR、LWLOGC_WARN、LWLOGC_INFO、LWLOGC_DEBUG。当然你可也完全可以根据实际项目所要对其进行宏重新定义。</font>
 
-- ![#1589F0](https://placehold.it/15/1589F0/000000?text=+) <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;方式二: 使用LWlog.*同级目录下的Makefile编译出LWlogc日志记录库的动态库 libLWlogc.so， 然后将该动态库放在你的项目中，编译成果物物时候链接进去。对于该方式的具体使用可以参考同级目录test/下的main.c测试文件的所有。</font>
+- ![#1589F0](https://placehold.it/15/1589F0/000000?text=+) <font face="Lucida Console" size=4 color = black>方式二: 使用LWlog.*同级目录下的Makefile编译出LWlogc日志记录库的动态库 libLWlogc.so， 然后将该动态库放在你的项目中，编译成果物物时候链接进去。对于该方式的具体使用可以参考同级目录test/下的main.c测试文件的所有。</font>
 
 - ![#c5f015](https://placehold.it/15/c5f015/000000?text=+) 无论是使用方式一，还是方式二，在你的项目工程里，仅需明确指定初始化LwlogcInit()函数(参数是lwlog.properties配置文件路径)， 剩余的工作交给LWlogc日志记录库自己内部完成。因此使用起来是很方便的。
 
 
 ## 2.4 LWlogc内存、cpu占用
-<font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;测试环境(VMware虚拟机环境)</font>
+- ![#f03c15](https://placehold.it/15/f03c15/000000?text=+)<font face="Lucida Console" size=4 color = black>测试环境(VMware虚拟机环境)</font>
 
-<font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;(1) 系统平台: VMware Virtual Platform</font>
+- ![#c5f015](https://placehold.it/15/c5f015/000000?text=+)<font face="Lucida Console" size=4 color = black>(1) 系统平台: VMware Virtual Platform</font>
 
-<font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;(2) CPU:  Intel(R) Core(TM) i7-6500U CPU @ 2.50GHz</font>
+- ![#c5f015](https://placehold.it/15/c5f015/000000?text=+)<font face="Lucida Console" size=4 color = black>(2) CPU:  Intel(R) Core(TM) i7-6500U CPU @ 2.50GHz</font>
 
-<font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;(3) 内存: MemTotal:        2006924 kB(2GB)</font>
+- ![#c5f015](https://placehold.it/15/c5f015/000000?text=+)<font face="Lucida Console" size=4 color = black>(3) 内存: MemTotal:        2006924 kB(2GB)</font>
 
-<font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;(4) 操作系统版本: Ubuntu 20.04</font>
+- ![#c5f015](https://placehold.it/15/c5f015/000000?text=+)<font face="Lucida Console" size=4 color = black>(4) 操作系统版本: Ubuntu 20.04</font>
 
-<font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;(5) 磁盘型号: HDD(机械硬盘) 20GB</font>
+- ![#c5f015](https://placehold.it/15/c5f015/000000?text=+)<font face="Lucida Console" size=4 color = black>(5) 磁盘型号: HDD(机械硬盘) 20GB</font>
 
 
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;该数据使用test/目录下的main.c文件中的数据测试所得，但是条件修改了，死循永不停息地重复打印日志、写磁盘、读磁盘、删log文件、创建新log文件等等。因此对CPU的占用稍微偏高，这是在压测环境下所的的数据，仅供参考。</font>
