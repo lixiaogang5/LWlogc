@@ -82,17 +82,22 @@ lwlog.ConversionPattern = %Y-%M-%D
 
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;方式二: 使用LWlog.*同级目录下的Makefile编译出LWlogc日志记录库的动态库 libLWlogc.so， 然后将该动态库放在你的项目中，编译成果物物时候链接进去。对于该方式的具体使用可以参考同级目录test/下的main.c测试文件的所有。</font>
 
-* <font face="Lucida Console" size=4 color = red>&ensp;&ensp; &ensp;&ensp;无论是使用方式一，还是方式二，在你的项目工程里，仅需明确指定初始化LwlogcInit()函数(参数是lwlog.properties配置文件路径)， 剩余的工作交给LWlogc日志记录库自己内部完成。因此使用起来是很方便的。</font>
+- ![#c5f015](https://placehold.it/15/c5f015/000000?text=+) `无论是使用方式一，还是方式二，在你的项目工程里，仅需明确指定初始化LwlogcInit()函数(参数是lwlog.properties配置文件路径)， 剩余的工作交给LWlogc日志记录库自己内部完成。因此使用起来是很方便的。`
 
 
 ## 2.4 LWlogc内存、cpu占用
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;测试环境(VMware虚拟机环境)</font>
 
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;(1) 系统平台: VMware Virtual Platform</font>
+
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;(2) CPU:  Intel(R) Core(TM) i7-6500U CPU @ 2.50GHz</font>
+
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;(3) 内存: MemTotal:        2006924 kB(2GB)</font>
+
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;(4) 操作系统版本: Ubuntu 20.04</font>
+
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;(5) 磁盘型号: HDD(机械硬盘) 20GB</font>
+
 
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;该数据使用test/目录下的main.c文件中的数据测试所得，但是条件修改了，死循永不停息地重复打印日志、写磁盘、读磁盘、删log文件、创建新log文件等等。因此对CPU的占用稍微偏高，这是在压测环境下所的的数据，仅供参考。</font>
 
