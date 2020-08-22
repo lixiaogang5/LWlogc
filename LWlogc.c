@@ -164,19 +164,12 @@ int LwlogcInit(const char *configFile)
 
 	LwlogcInitGlobalVarMemberList();
 	
-	FILE *fp = fopen(configFile, "r");
-	if(!fp) {
-		perror("fopen");
-		LwlogcReleaseResources(fp);
-		return false;
-	}
-
 	pthread_t tid;
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	if( 0 != pthread_create(&tid, &attr, LwlogcReadConf, (void*)fp)) {
+	if( 0 != pthread_create(&tid, &attr, LwlogcReadConf, (void*)configFile)) {
 		fprintf(stderr, "[%s] pthread_create failed.", FUNCTION_NAME);
-		LwlogcReleaseResources(fp);
+		LwlogcReleaseResources(NULL);
 		return false;
 	}
 
@@ -185,7 +178,7 @@ int LwlogcInit(const char *configFile)
 	while(!bInit) sleep(1);
 	if(false == LwlogcCouNum2SizeOfFiles(logConfigure.filePath)) {
 		fprintf(stderr, "[%s]LwlogcCouNum2SizeOfFiles failed.", FUNCTION_NAME);
-		LwlogcReleaseResources(fp);
+		LwlogcReleaseResources(NULL);
 		return false;
 	}
 
@@ -193,7 +186,7 @@ int LwlogcInit(const char *configFile)
 	size_t buf_len = sizeof(buf);
 	if(false == LwlogcNewestLogFile(buf, &buf_len)) {
 		fprintf(stderr, "[%s]LwlogcNewestLogFile failed.", FUNCTION_NAME);
-		LwlogcReleaseResources(fp);
+		LwlogcReleaseResources(NULL);
 		return false;
 	}
 
@@ -201,7 +194,7 @@ int LwlogcInit(const char *configFile)
 	if(!fpN) {
 		perror("fopen");
 		fclose(fpN);
-		LwlogcReleaseResources(fp);
+		LwlogcReleaseResources(NULL);
 		return false;
 	}
 	
@@ -213,10 +206,10 @@ int LwlogcInit(const char *configFile)
 
 
 
-void* LwlogcReadConf(void *pFd)
+void* LwlogcReadConf(void *pConfiFilePath)
 {
-	if(!pFd) {
-		fprintf(stderr, "[%s]lwlogc_read_conf param is null.", FUNCTION_NAME);
+	if(!pConfiFilePath) {
+		fprintf(stderr, "[%s] LwlogcReadConf Parameter is empty.", FUNCTION_NAME);
 		return (void*)false;
 	}
 
@@ -229,11 +222,19 @@ void* LwlogcReadConf(void *pFd)
 	 * a+	: 以追加读写模式打开文件, 文件不存在, 会创建. 流指针指向文件末尾, 所有写入追加到文件末尾.*
 	 *************************************************************************************************
 	 */
-	FILE *fp = (FILE*)pFd;
+
+	FILE *fp = NULL;
 	char buf_conf[TIME_NOW_BUF_SIZE] = {0};
 	
 	for(; ; )
 	{
+		fp = fopen(pConfiFilePath, "r");
+		if(!fp) {
+			perror("fopen");
+			LwlogcReleaseResources(fp);
+			return (void*)false;
+		}
+	
 		for(; fgets(buf_conf, TIME_NOW_BUF_SIZE, fp) != NULL; ) //really read the data: size - 1
 		{
 			char *p = NULL;
@@ -313,8 +314,8 @@ void* LwlogcReadConf(void *pFd)
 		}
 
 		bInit = true;
-		rewind(fp);
-		sleep(5);
+		fclose(fp);
+		sleep(3);
 	}
 
 	LwlogcReleaseResources(fp);
@@ -756,7 +757,7 @@ void *LwlogcTraverse2DelLogFiles(void *pThreadParm)
 	for(;;) {
 		
 		if(LwlogcGetLogsNum() > logConfigure.maxBackupIndex) LwlogcDeleteOldLogFile();
-		else sleep(5);
+		else sleep(1);
 	}
 
 	return NULL;
