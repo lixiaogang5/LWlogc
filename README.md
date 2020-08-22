@@ -68,7 +68,7 @@ lwlog.ConversionPattern = %Y-%M-%D
 ## 2.1 LWlogc日志记录库文件目录结构图
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;在第1节中提高过LWlogc日志记录框架库非常轻量，仅两个文件。下图是LWlogc项目的文件目录结构图。</font>
 
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20200820124035547.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2xpeGlhb2dhbmdfdGhlYW5zd2Vy,size_16,color_FFFFFF,t_70#pic_center)
+
 ![image](https://img-blog.csdnimg.cn/20200820124035547.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2xpeGlhb2dhbmdfdGhlYW5zd2Vy,size_16,color_FFFFFF,t_70#pic_center)
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;该图详细的说明了LWlogc日志库中各文件的分布以及其功能。这也是你Download该目录之后的文件结构布局图。</font> 
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;</font> 
