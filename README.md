@@ -119,6 +119,10 @@ lwlog.MaxFileSize = 800
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200821001102685.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2xpeGlhb2dhbmdfdGhlYW5zd2Vy,size_16,color_FFFFFF,t_70#pic_center)
 
+### 2.4.2 LWlogc日志打印
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200824104435648.gif#pic_center)
+
 <font face="Lucida Console" size=4 color = black>&ensp;&ensp; &ensp;&ensp;节省篇幅，更多的配置结果现象就不一一阐述了。</font>
 
 
